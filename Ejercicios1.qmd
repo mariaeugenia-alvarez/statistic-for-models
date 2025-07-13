@@ -27,6 +27,8 @@ Para la columna Birthweight:
 
 1- Calcular media, mediana y los cuartiles
 
+Q1 = 6.45 // Q3 = 8
+
 ```{r}
 print(paste("La media de nacimientos es:",round(mean(bwt$Birthweight),2)))
 print(paste("La mediana de nacimientos es:",median(bwt$Birthweight)))
@@ -43,48 +45,73 @@ X<-bwt$Birthweight
 par(pin = c(7, 4)) 
 boxplot(X,ylim = c(4, 10.5))
 grid()
+q1<-quantile(X,0.25)
+q3<-quantile(X,0.75)
 iqr<-q3-q1
 names(iqr)<-"iqr"
-q1
-q3
-iqr
 limite_superior <- q3+1.5*iqr
-limite_superior
+limite_inferior <- q1-1.5*iqr
 
 text(1.25,q3,"Q3")
 text(1.29,median(X),"mediana")
 text(1.25,q1,"Q1")
 text(1.25,limite_superior,"Q3+1.5·IQR")
-text(1.25,q1-1.5*iqr,"Q1-1.5·IQR")
+text(1.25,limite_inferior,"Q1-1.5·IQR")
 ```
 
 ```{r}
-
+library(tidyverse)
 ```
 
 3-¿Cuantas madres fumadoras y no fumadoras hay?
 
-```{r}
+MADRE FUMADORA 22 // MADRE NO FUMADORA 20
 
+```{r}
+bwt |> group_by(smoker) |> summarise(num=n())
 ```
 
 4- ¿Cual es el peso medio de los niños al nacer para las madres fumadoras y no fumadoras?
 
+Madre Fumadora = 6.88 // Madre NO Fumadora = 7.69
+
 ```{r}
-
-
+bwt |> group_by(smoker) |> summarise(num=n(), media_pesos = mean(Birthweight))
 ```
 
 5- ¿Cual de los dos grupos presenta una varianza mayor?
 
-```{r}
+Madre Fumadora = 1.93 // Madre NO fumadora = 1.32
 
+```{r}
+bwt |> group_by(smoker) |> summarise(num=n(), varianza_pesos = var(Birthweight))
 ```
 
 6- Pinta un Boxplot del peso para cada uno de los grupos
 
 ```{r}
+fumadoras <- bwt$Birthweight[bwt$Smoke == "YES"]
+no_fumadoras <- bwt$Birthweight[bwt$Smoke == "NO"] 
 
+crear_boxplot <- function(X,tittle) {
+par(pin = c(7, 4)) 
+boxplot(X,ylim = c(4, 10.5), main=tittle)
+grid()
+q1<-quantile(X,0.25)
+q3<-quantile(X,0.75)
+iqr<-q3-q1
+names(iqr)<-"iqr"
+limite_superior <- q3+1.5*iqr
+limite_inferior <- q1-1.5*iqr
+
+text(1.25,q3,"Q3")
+text(1.29,median(X),"mediana")
+text(1.25,q1,"Q1")
+text(1.25,limite_superior,"Q3+1.5·IQR")
+text(1.25,limite_inferior,"Q1-1.5·IQR")
+
+crear_boxplot(fumadoras, "Boxplot peso - Mujeres Fumadoras")
+crear_boxplot(no_fumadoras, "Boxplot peso - Mujeres NO Fumadoras")
 ```
 
 ## Ciudades soleadas
