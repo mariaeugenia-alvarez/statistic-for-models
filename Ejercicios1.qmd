@@ -90,11 +90,11 @@ bwt |> group_by(smoker) |> summarise(num=n(), varianza_pesos = var(Birthweight))
 6- Pinta un Boxplot del peso para cada uno de los grupos
 
 ```{r}
-fumadoras <- bwt$Birthweight[bwt$Smoke == "YES"]
-no_fumadoras <- bwt$Birthweight[bwt$Smoke == "NO"] 
+fumadoras <- bwt$Birthweight[bwt$smoker == 'YES']
+no_fumadoras <- bwt$Birthweight[bwt$smoker == "NO"] 
 
 crear_boxplot <- function(X,tittle) {
-par(pin = c(7, 4)) 
+par(pin = c(5, 3)) 
 boxplot(X,ylim = c(4, 10.5), main=tittle)
 grid()
 q1<-quantile(X,0.25)
@@ -109,9 +109,13 @@ text(1.29,median(X),"mediana")
 text(1.25,q1,"Q1")
 text(1.25,limite_superior,"Q3+1.5·IQR")
 text(1.25,limite_inferior,"Q1-1.5·IQR")
+}
 
-crear_boxplot(fumadoras, "Boxplot peso - Mujeres Fumadoras")
-crear_boxplot(no_fumadoras, "Boxplot peso - Mujeres NO Fumadoras")
+crear_boxplot(fumadoras, "Boxplot peso niños nacidos - Mujeres Fumadoras")
+crear_boxplot(no_fumadoras, "Boxplot peso niños nacidos - Mujeres NO Fumadoras")
+```
+
+```{}
 ```
 
 ## Ciudades soleadas
@@ -123,51 +127,77 @@ df_sunny <- read.csv("./data/cities_sunny.csv")
 head(df_sunny)
 ```
 
-1- ¿Cuantos paises hay? ¿Cuantas Ciudades?
-
 ```{r}
 
+```
+
+1- ¿Cuantos paises hay? ¿Cuantas Ciudades?
+
+Paises = 140 // Madre NO Fumadora = 378
+
+```{r}
+#hacer esto es igual a ver el total de levels de factor(df$Country), elimina repetidos
+paises <- df_sunny |> group_by(Country) |> summarise(num=n())
+nrow(paises)
+#
+ciudades <- factor(df_sunny$City)
+nlevels(ciudades)
 ```
 
 Numero de ciudades por pais. Hay tantas filas como paises:
 
 ```{r}
-
+ciudades_pais <- df_sunny |> group_by(Country) |> summarise(num=n())
+ciudades_pais
 ```
 
 Numero de ciudades:
 
 ```{r}
-
+ciudades <- factor(df_sunny$City)
+nlevels(ciudades)
 ```
 
 2- ¿Cual es la ciudad que más horas de sol tiene en enero?
 
-```{r}
+Santiago
 
+```{r}
+df_sunny[which.max(df_sunny$Jan),"City"]
 ```
 
 3- ¿Cual es la ciudad que más horas de sol totales tiene en los meses de Enero, Febrero y Marzo? (suma los 3 meses y encuentra la ciudad con el máximo)
 
-```{r}
+Calama
 
+```{r}
+df_sunny$horas_E_F_M <- df_sunny$Jan + df_sunny$Feb + df_sunny$Mar
+df_sunny[which.max(df_sunny$horas_E_F_M),"City"]
 
 ```
 
 4- ¿Cual es la ciudad que más horas de sol tiene en todo el año? (sumando todos los meses)
 
-```{r}
+Yuma
 
+```{r}
+df_sunny$Year <- as.numeric(gsub(',','',df_sunny$Year))
+df_sunny[which.max(df_sunny$Year),"City"]
 ```
 
 5- En el dataset, ¿cual es el país que tiene más ciudades?. Muestra el número medio de horas mensuales en enero para las ciudades de ese país.
 
-```{r}
+Chennai
 
+```{r}
+df_sunny[which.max(ciudades_pais$num),"City"]
 ```
 
 6- ¿Cual es el número medio de horas soleadas al mes en Madrid? ¿y su mediana?
 
 ```{r}
+df_Madrid<- df_sunny[df_sunny$City=='Madrid',]
+df_Madrid_media <- rowMeans(df_Madrid[,3:14])
+df_Madrid_media
 
 ```
