@@ -10,8 +10,64 @@ Vasmos a cargar el dataset de AirBnB descargado de [aquí](https://public.openda
 ![](descargar.png)
 
 ```{r}
-airbnb<-read.csv('airbnb-listings.csv',sep = ';')
+airbnb<-read.csv("/Users/maru/developement/statistic-for-models/practica/airbnb-listings.csv",sep = ';')
 options(repr.plot.height=4,repr.plot.width=6,repr.plot.res = 300)
+```
+
+```{r}
+str(airbnb)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+# 1. columnas mayor interés
+df_airbnb <- airbnb[,c('City', 'Room.Type', 'Neighbourhood', 'Accommodates', 
+  'Bathrooms', 'Bedrooms', 'Beds', 'Price', 'Square.Feet', 
+  'Guests.Included', 'Extra.People', 'Review.Scores.Rating', 
+  'Latitude', 'Longitude')]
+
+df_madrid <- df_airbnb |> filter(City == "Madrid" & Room.Type == "Entire home/apt" & Neighbourhood != '')
+df_madrid <- df_madrid %>% select(-Room.Type , -City)
+str(df_madrid)
+```
+
+```{r}
+# 2.Nueva columna Square.Meters
+df_madrid$Square.Meters <- df_madrid$Square.Feet*0.092903
+```
+
+```{r}
+# 3.% apartamentos NA en Square.Meters
+na_square_meters <- length(df_madrid$Square.Meters[is.na(df_madrid$Square.Meters)])
+
+paste("El número de elementos con NA en Square.Meters es:", na_square_meters)
+
+percentage_na_square_meters <- na_square_meters/nrow(df_madrid)
+
+paste("El % con NA en Square.Meters es:",round(percentage_na_square_meters*100,2))
+```
+
+```{r}
+# 4. % apartamentos distintos de NA con valor 0 en Square.Meters
+not_na_square_meters <- nrow(df_madrid) - na_square_meters
+zero_square_meters <- nrow(df_madrid |> filter(Square.Meters == 0))
+
+print(zero_square_meters)
+percentage_0_square_meters <- zero_square_meters/not_na_square_meters
+
+paste("El % con 0 de no NA en Square.Meters es:",round(percentage_0_square_meters*100,2))
+```
+
+```{r}
+# 5. Reemplazar todos los 0m^2 por NA
+df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters == 0, NA, Square.Meters))
+str(df_madrid)
+                                  
+na_square_meters <- length(df_madrid$Square.Meters[is.na(df_madrid$Square.Meters)])
+paste("El número de elementos con NA en Square.Meters es:", na_square_meters)
 ```
 
 1.  Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
