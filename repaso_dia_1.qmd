@@ -1,0 +1,83 @@
+---
+title: "RepasoDia1"
+format: html
+editor: visual
+---
+
+## Trabajando con DataFrames
+
+```{r}
+
+df=read.csv('data/cities_sunny.csv')
+```
+
+Los nombres de las columnas del dataframe:
+
+```{r}
+colnames(df)
+```
+
+Los 5 paises con más entradas:
+
+```{r}
+tbl <- table(df$Country)
+head(sort(tbl, decreasing = T),5)
+```
+
+Pasamos country a factor y la variable Year a numerico:
+
+```{r}
+df$Country <- factor(df$Country)
+df$Year <- as.numeric(gsub(',','',df$Year))
+```
+
+Vemos el resumen del dataframe:
+
+```{r}
+summary(df)
+```
+
+Quiero ver la ciudad que más horas soleadas tiene al año: Opcion 1:
+
+```{r}
+df[which(df$Year>=4010), c('Year','City')]
+```
+
+Opcion 2:
+
+```{r}
+tail(df[order(df$Year),],1)
+```
+
+Opcion 3
+
+```{r}
+df[which.max(df$Year),"City"]
+```
+
+Paises y Ciudades que tienen más de 350 horas de sol en Enero
+
+```{r}
+df[df$Jan>350,c('Country','City')]
+```
+
+Queremos crear un dataframe solo con las ciudades de China:
+
+```{r}
+df_china <- df[df$Country=='China',]
+```
+
+Horas de sol anuales medias en las ciudades chinas:
+```{r}
+mean(df_china$Year)
+```
+
+
+Todas las ciudades que en Enero han tenido más de 200 horas de sol, y en agosto han tenido entre 100 y 300 horas de sol.
+```{r}
+df[df$Jan>200 & df$Aug>=100 & df$Aug<=300, c('Country', 'City', 'Year')]
+```
+```{r}
+library(tidyverse)
+df |> filter(Jan>200) |> filter(Aug>=100 & Aug<=300)
+```

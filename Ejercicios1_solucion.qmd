@@ -1,0 +1,154 @@
+---
+title: "Ejercicios1"
+format: html
+editor: visual
+---
+
+## Peso al nacer
+
+Leer el dataset que se encuentra en data/birthweight_reduced.csv.
+
+```{r}
+bwt <- read.csv("./data/birthweight_reduced.csv")
+head(bwt)
+```
+
+Convertir la columna smoker en un factor con los valores: 1- 'YES' 0- 'NO'
+
+```{r}
+library(tidyverse)
+#bwt$smoker <- factor(bwt$smoker, labels=c('NO','YES'))
+bwt |> mutate(smoker=factor(smoker, labels=c('NO','YES'))) -> bwt
+```
+
+Para la columna Birthweight:
+
+1- Calcular media, mediana y los cuartiles
+
+```{r}
+summary(bwt$Birthweight)
+```
+
+```{r}
+cat("Media:",mean(bwt$Birthweight),'\n')
+cat("Mediana:",median(bwt$Birthweight),'\n')
+cat("Cuartiles:",quantile(bwt$Birthweight, probs=c(0.25,0.5,0.75)),'\n')
+```
+
+2- Dibujar un Boxplot. Y decir cuales son los outliers, y ver si veis alguna caracteristica importante.
+
+```{r}
+ggplot(bwt, aes(y=Birthweight))+geom_boxplot(color='red')
+```
+
+3-¿Cuantas madres fumadoras y no fumadoras hay?
+
+```{r}
+bwt |> group_by(smoker) |> summarise(num=n())
+#table(bwt$smoker)
+#summary(bwt$smoker)
+```
+
+4- ¿Cual es el peso medio de los niños al nacer para las madres fumadoras y no fumadoras?
+
+```{r}
+bwt |> group_by(smoker) |> summarise(num=n(), peso=mean(Birthweight))
+```
+
+5- ¿Cual de los dos grupos presenta una varianza mayor?
+
+```{r}
+bwt |> group_by(smoker) |> summarise(num=n(), peso=mean(Birthweight), var_peso=var(Birthweight))
+```
+
+6- Pinta un Boxplot del peso para cada uno de los grupos
+
+```{r}
+#boxplot(Birthweight~smoker, data=bwt)
+ggplot(bwt, aes(x=smoker, y=Birthweight, color=smoker))+geom_boxplot()
+```
+
+## Ciudades soleadas
+
+Vamos a leer el dataset cities_sunny. Muestra las horas de sol medias que tienen diferentes ciudades en un mes determinado.
+
+```{r}
+df_sunny <- read.csv("./data/cities_sunny.csv")
+head(df_sunny)
+```
+
+1- ¿Cuantos paises hay? ¿Cuantas Ciudades?
+
+```{r}
+cat("Numero de paises",n_distinct(df_sunny$Country),"\n")
+cat("Numero de ciudades",nrow(df_sunny),"\n")
+```
+
+Nombre de la Ciudad que aparece en más de un país
+
+```{r}
+df_sunny |> group_by(City) |> summarize(num=n()) |> filter(num>1) |> pull(City) -> ciudad_repetida
+df_sunny |> filter(City %in% ciudad_repetida)
+```
+
+Numero de ciudades por pais. Hay tantas filas como paises:
+
+```{r}
+df_sunny |> group_by(Country) |> summarize(num=n()) |> arrange(desc(num)) |> head()
+
+#head(sort(table(df_sunny$Country), decreasing=T))
+```
+
+Numero de ciudades:
+
+```{r}
+nrow(df_sunny)
+```
+
+2- ¿Cual es la ciudad que más horas de sol tiene en enero?
+
+```{r}
+#df_sunny[which.max(df_sunny$Jan),c('Country','City')]
+df_sunny |> slice_max(order_by = Jan, n=1) |> select(Country, City)
+```
+
+3- ¿Cual es la ciudad que más horas de sol totales tiene en los meses de Enero, Febrero y Marzo? (suma los 3 meses y encuentra la ciudad con el máximo)
+
+```{r}
+df_sunny$trimestre=df_sunny$Jan+df_sunny$Feb+df_sunny$Mar
+df_sunny[which.max(df_sunny$trimestre),c('Country','City')]
+
+df_sunny |> mutate(trimestre=Jan+Feb+Mar)|> slice_max(order_by = trimestre , n=1) |> select(Country, City, trimestre)
+
+```
+
+4- ¿Cual es la ciudad que más horas de sol tiene en todo el año? (sumando todos los meses)
+
+```{r}
+df_sunny$todo_año <- rowSums(df_sunny[,3:14])
+df_sunny[which.max(df_sunny$todo_año),c('Country','City','todo_año')]
+
+```
+
+5- En el dataset, ¿cual es el país que tiene más ciudades?. Muestra el número medio de horas mensuales en enero para las ciudades de ese país.
+
+```{r}
+df_sunny |> group_by(Country) |> 
+  summarise(total_cities=n(), media=mean(Jan)) |> filter(total_cities==max(total_cities))
+
+
+```
+
+6- ¿Cual es el número medio de horas soleadas al mes en Madrid? ¿y su mediana?
+
+```{r}
+rowMeans(df_sunny[df_sunny$City=='Madrid',3:14])
+```
+
+```{r}
+mean(t(df_sunny[df_sunny$City=='Madrid',3:14]))
+```
+
+```{r}
+median(t(df_sunny[df_sunny$City=='Madrid',3:14]))
+```
