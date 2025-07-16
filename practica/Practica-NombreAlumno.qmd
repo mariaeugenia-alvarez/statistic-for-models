@@ -74,7 +74,7 @@ paste("El número de elementos con NA en Square.Meters es:", na_square_meters)
 ```{r}
 # 6.Pinta el histograma 
 
-hist(x = df_madrid$Square.Meters, ylim = c(0, 120), main = 'Histogram of Sqm Madrid rooms', xlab = "Square meters", ylab = 'Frecuency', col = 'lightblue', cex.axis = 1.5, cex.lab = 1.8, cex.main = 2.0) 
+hist(x = df_madrid$Square.Meters, #probar a meter un break 10# ylim = c(0, 120), main = 'Histogram of Sqm Madrid rooms', xlab = "Square meters", ylab = 'Frecuency', col = 'lightblue', cex.axis = 1.5, cex.lab = 1.8, cex.main = 2.0) 
 ```
 
 ```{r}
@@ -90,10 +90,10 @@ df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20, NA,
 df_sq_Neigh <- df_madrid |> group_by(Neighbourhood) |> summarise(num=n(), Sq_NA = sum(is.na(Square.Meters)))
 df_sq_Neigh
 df_madrid <- df_madrid$Neighbourhood %>% filter(df_sq_Neigh$num == df_sq_Neigh$Sq_NA)
-str(df_madrid)
+str(df_madrid) #(select(-columna a eliminar))
 ```
 
-1.  Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
+1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
 
 ------------------------------------------------------------------------
 
