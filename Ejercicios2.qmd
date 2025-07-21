@@ -16,23 +16,36 @@ head(bwt)
 ```
 
 ```{r}
-
+bwt$smoker<-factor(bwt$smoker,labels = c("NO","YES"))
 ```
 
 Para NO fumadores
 
 ```{r}
+m <- mean(bwt$Birthweight[bwt$smoker == "NO"])
+s <- sd(bwt$Birthweight[bwt$smoker == "NO"])
+p <- 0.05
+sm <- s/sqrt(length(bwt$Birthweight[bwt$smoker == "NO"]))
+error <- qt(1-p/2,n-1)*sm   
 
+upl <- m + error
+lowl <- m - error
+error
+print(paste0("El intervalo de confianza con un p-valor=0.05 es:[",lowl,",",upl,"]"))
+```
+
+```{r}
+t.test(bwt$Birthweight[bwt$smoker == "NO"])
 ```
 
 Para SI fumadores
 
 ```{r}
-
+mean(bwt$Birthweight[bwt$smoker == "YES"])
 ```
 
 ```{r}
-
+t.test(bwt$Birthweight[bwt$smoker == "YES"])
 ```
 
 ## Ejemplo probabilidad COVID
