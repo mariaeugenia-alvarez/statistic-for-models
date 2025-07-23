@@ -88,6 +88,39 @@ df_madrid <- df_madrid[df_madrid$Neighbourhood != df_sq_Neigh$Neighbourhood,]
 str(df_madrid)
 ```
 
+```{r}
+# 9. El p-valor del test shapiro (2.2e-16) es muy bajo, podemos descartar la hipotesis nula, es decir los datos NO siguen una distribución normal
+shapiro.test(df_madrid$Square.Meters)
+
+#Usamos el test kruskal. La hipotesis nula es que las medias fueran iguales en todos los barrios. El p-valor 0.01074 nos indica que existen diferencias significativas y que no podemos asegurar que todos los barrios tienen los mismos metros cuadrados de media. 
+kruskal.test(Square.Meters ~ Neighbourhood , data=df_madrid)
+```
+
+```{r}
+# 10. Matriz de similaridad de Tukey.
+tky<-TukeyHSD(aov( Square.Meters ~ Neighbourhood, data=df_madrid))
+tky.result<-data.frame(tky$Neighbourhood)
+cn <-sort(unique(df_madrid$Neighbourhood))
+resm <- matrix(NA, length(cn),length(cn))
+rownames(resm) <- cn
+colnames(resm) <- cn
+resm[lower.tri(resm) ] <- round(tky.result$p.adj,4)
+resm[upper.tri(resm) ] <- t(resm)[upper.tri(resm)] 
+diag(resm) <- 1
+library(ggplot2)
+library(reshape2)
+dfResm <- melt(resm)
+ggplot(dfResm, aes(x=Var1, y=Var2, fill=value))+
+  geom_tile(colour = "black")+
+  geom_text(aes(label=paste(round(value*100,0),"%")),size = 3) +
+  scale_fill_gradient(low = "white",high = "steelblue")+
+  ylab("Class")+xlab("Class")+theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),legend.position="none")
+```
+
+```{}
+```
+
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
 
 ------------------------------------------------------------------------
