@@ -85,7 +85,7 @@ df_sq_Neigh <- df_madrid |> group_by(Neighbourhood) |> summarise(num=n(), sq_NA 
 df_sq_Neigh <- df_sq_Neigh[df_sq_Neigh$num != df_sq_Neigh$sq_NA,]
 df_sq_Neigh$Neighbourhood
 df_madrid <- df_madrid[df_madrid$Neighbourhood != df_sq_Neigh$Neighbourhood,]
-str(df_madrid)
+head(df_madrid)
 ```
 
 ```{r}
@@ -118,7 +118,13 @@ ggplot(dfResm, aes(x=Var1, y=Var2, fill=value))+
   theme(axis.text.x = element_text(angle = 90, hjust = 1),legend.position="none")
 ```
 
-```{}
+```{r}
+# 12. Crear grupo test y grupo train
+set.seed(12345)
+idx<-sample(1:nrow(df_madrid),nrow(df_madrid)*0.7)
+df_madrid.train<-df_madrid[idx,]
+df_madrid.test <-df_madrid[-idx,]
+
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.

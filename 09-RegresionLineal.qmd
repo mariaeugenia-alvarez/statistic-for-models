@@ -184,6 +184,9 @@ mse<-function(beta1,beta2){
     out
 }
 
+# Limpiar estado gráfico
+dev.off()
+
 beta1 <- seq(-20,20,length=100)
 beta2 <- seq(-10,40,length=100)
 z <- outer(beta1,beta2,mse)
@@ -614,7 +617,7 @@ set.seed(12345)
 idx<-sample(1:nrow(powerplant),nrow(powerplant)*0.7)
 powerplant.train<-powerplant[idx,]
 powerplant.test <-powerplant[-idx,]
-model_powerplant<-lm(PE~AT+V+AP+RF,data=powerplant.train)
+model_powerplant<-lm(PE~AT+V+AP+RH,data=powerplant.train)
 summary(model_powerplant)
 ```
 
