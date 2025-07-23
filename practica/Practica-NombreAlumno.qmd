@@ -84,8 +84,8 @@ df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20, NA,
 df_sq_Neigh <- df_madrid |> group_by(Neighbourhood) |> summarise(num=n(), sq_NA = sum(is.na(Square.Meters)))
 df_sq_Neigh <- df_sq_Neigh[df_sq_Neigh$num != df_sq_Neigh$sq_NA,]
 df_sq_Neigh$Neighbourhood
-df_madrid <- df_madrid[df_madrid$Neighbourhood != df_sq_Neigh$Neighbourhood,]
-head(df_madrid)
+df_madrid <- df_madrid[df_madrid$Neighbourhood %in% df_sq_Neigh$Neighbourhood,]
+str(df_madrid)
 ```
 
 ```{r}
