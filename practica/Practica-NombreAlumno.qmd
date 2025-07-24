@@ -43,7 +43,7 @@ df_madrid$Square.Meters <- df_madrid$Square.Feet*0.092903
 ```
 
 ```{r}
-# 3.% apartamentos NA en Square.Meters
+# 3.% apartamentos NA en Square.Meters (5254 NAs en Sqm, 93.8%)
 na_square_meters <- sum(is.na(df_madrid$Square.Meters))
 cat("El número de elementos con NA en Square.Meters es:", na_square_meters)
 
@@ -52,7 +52,7 @@ cat("El % con NA en Square.Meters es:",round(percentage_na_square_meters*100,2))
 ```
 
 ```{r}
-# 4. % apartamentos distintos de NA con valor 0 en Square.Meters
+# 4. % apartamentos distintos de NA con valor 0 en Square.Meters (128 '0' en Sqm, 36.98%)
 zero_square_meters <- nrow(df_madrid |> filter(Square.Meters == 0))
 
 percentage_0_square_meters <- zero_square_meters/(nrow(df_madrid) - na_square_meters)
@@ -60,7 +60,7 @@ cat("El % con 0 de no NA en Square.Meters es:",round(percentage_0_square_meters*
 ```
 
 ```{r}
-# 5. Reemplazar todos los 0m^2 por NA (ahora los NA son 128+5254)
+# 5. Reemplazar todos los 0m^2 por NA (ahora los NA son 128+5254 = 5382)
 df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters == 0, NA, Square.Meters))
                                   
 na_square_meters <- sum(is.na(df_madrid$Square.Meters))
@@ -69,21 +69,23 @@ cat("El número de elementos con NA en Square.Meters es:", na_square_meters)
 ```
 
 ```{r}
-# 6.Pinta el histograma (ponemos break para mostrar más detalle)
+# 6.Pinta el histograma (ponemos break 20 para mostrar más detalle, sobre todo los pisos de menos de 100m2)
 
 hist(x = df_madrid$Square.Meters, breaks = 20, ylim = c(0, 60), main = 'Histogram of Sqm Madrid rooms', xlab = "Square meters", ylab = 'Frecuency', col = 'lightblue') 
 ```
 
 ```{r}
-# 7.NA <20 Square meters
+# 7.NA <20 Square meters (45 apartamentos por debajo de 20m2 son en total 5427)
 df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20, NA, Square.Meters))
 ```
 
 ```{r}
-# 8.Eliminar todos los barrios con todas las rooms con NA Square meters
+# 8.Eliminar todos los barrios con todas las rooms con NA Square meters (4901 apartamentos)
 df_sq_Neigh <- df_madrid |> group_by(Neighbourhood) |> summarise(num=n(), sq_NA = sum(is.na(Square.Meters)))
 df_sq_Neigh <- df_sq_Neigh[df_sq_Neigh$num != df_sq_Neigh$sq_NA,]
-df_sq_Neigh$Neighbourhood
+
+df_sq_Neigh$Neighbourhood #barrio que quiero dejar
+
 df_madrid <- df_madrid[df_madrid$Neighbourhood %in% df_sq_Neigh$Neighbourhood,]
 str(df_madrid)
 ```
@@ -112,7 +114,7 @@ library(reshape2)
 dfResm <- melt(resm)
 ggplot(dfResm, aes(x=Var1, y=Var2, fill=value))+
   geom_tile(colour = "black")+
-  geom_text(aes(label=paste(round(value*100,0),"%")),size = 3) +
+  geom_text(aes(label=paste(round(value,2))),size = 3) +
   scale_fill_gradient(low = "white",high = "steelblue")+
   ylab("Class")+xlab("Class")+theme_bw()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1),legend.position="none")
@@ -124,7 +126,12 @@ set.seed(12345)
 idx<-sample(1:nrow(df_madrid),nrow(df_madrid)*0.7)
 df_madrid.train<-df_madrid[idx,]
 df_madrid.test <-df_madrid[-idx,]
+head(df_madrid.train)
+head(df_madrid.test)
+```
 
+```{r}
+#13. Predecir Sqm en función del resto de variables
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
