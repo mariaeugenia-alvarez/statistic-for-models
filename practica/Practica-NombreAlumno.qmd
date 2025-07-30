@@ -94,12 +94,29 @@ str(df_madrid)
 # 9. El p-valor del test shapiro (2.2e-16) es muy bajo, podemos descartar la hipotesis nula, es decir los datos NO siguen una distribución normal
 shapiro.test(df_madrid$Square.Meters)
 
-#Usamos el test kruskal. La hipotesis nula es que las medias fueran iguales en todos los barrios. El p-valor 0.01074 nos indica que existen diferencias significativas y que no podemos asegurar que todos los barrios tienen los mismos metros cuadrados de media. 
+#Usamos el test kruskal. La hipotesis nula es que las medias fueran iguales en todos los barrios. El p-valor 0.01 nos indica que existen diferencias significativas y que no podemos asegurar que todos los barrios tienen los mismos metros cuadrados de media. 
 kruskal.test(Square.Meters ~ Neighbourhood , data=df_madrid)
+  
 ```
 
 ```{r}
-# 10. Matriz de similaridad de Tukey.
+
+shapiro_pvalues <- df_madrid %>%
+  filter(!is.na(Square.Meters)) %>%
+  group_by(Neighbourhood) %>%
+  summarise(
+    n = n(),
+    shapiro_pvalue = ifelse(n() >= 3 & n() <= 5000, 
+                           shapiro.test(Square.Meters)$p.value, 
+                           NA)
+  ) %>%
+  arrange(shapiro_pvalue)
+
+print(shapiro_pvalues)
+```
+
+```{r}
+# 10. Matriz de similaridad de Tukey. p-valor bajo, los barrios no se parecen. p-valor alto, los barrios se parecen
 tky<-TukeyHSD(aov( Square.Meters ~ Neighbourhood, data=df_madrid))
 tky.result<-data.frame(tky$Neighbourhood)
 cn <-sort(unique(df_madrid$Neighbourhood))
@@ -121,6 +138,29 @@ ggplot(dfResm, aes(x=Var1, y=Var2, fill=value))+
 ```
 
 ```{r}
+# 11. Precedir dendograma a partir de la matriz de Tukey
+sqm.dist<- as.dist(1-abs(resm))
+str(sqm.dist)
+
+sqm.tree <- hclust(sqm.dist, method="complete")
+sqm.dend <- as.dendrogram(sqm.tree) 
+
+#install.packages("dendextend")
+library(dendextend)
+
+clusters <- cutree(sqm.dend, h=0.25)
+plot(color_branches(sqm.dend, h=0.25),main = "Dendrograma de Barrios por Metros Cuadrados", leaflab = "none")
+
+text(1:length(labels(sqm.dend)), 
+     par("usr")[3] - 0.02, 
+     labels = labels(sqm.dend), 
+     srt = 90, 
+     adj = c(1, 0.5), 
+     xpd = TRUE, 
+     cex = 1.2)
+```
+
+```{r}
 # 12. Crear grupo test y grupo train
 set.seed(12345)
 idx<-sample(1:nrow(df_madrid),nrow(df_madrid)*0.7)
@@ -132,6 +172,12 @@ head(df_madrid.test)
 
 ```{r}
 #13. Predecir Sqm en función del resto de variables
+
+library(GGally)
+ggpairs(df_madrid[, -c(1, 7)], 
+       # lower = list(continuous = wrap("density", alpha = 0.8,size=0.2,color='blue'))
+       lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
+       )
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
