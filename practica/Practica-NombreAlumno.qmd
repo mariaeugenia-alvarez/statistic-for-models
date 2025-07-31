@@ -52,7 +52,7 @@ cat("El % con NA en Square.Meters es:",round(percentage_na_square_meters*100,2))
 ```
 
 ```{r}
-# 4. % apartamentos distintos de NA con valor 0 en Square.Meters (128 '0' en Sqm, 36.98%)
+# 4. % apartamentos distintos de NA con valor 0 en Square.Meters (128 '0' en Sqm, 36.8%)
 zero_square_meters <- nrow(df_madrid |> filter(Square.Meters == 0))
 
 percentage_0_square_meters <- zero_square_meters/(nrow(df_madrid) - na_square_meters)
@@ -99,20 +99,7 @@ kruskal.test(Square.Meters ~ Neighbourhood , data=df_madrid)
   
 ```
 
-```{r}
-
-shapiro_pvalues <- df_madrid %>%
-  filter(!is.na(Square.Meters)) %>%
-  group_by(Neighbourhood) %>%
-  summarise(
-    n = n(),
-    shapiro_pvalue = ifelse(n() >= 3 & n() <= 5000, 
-                           shapiro.test(Square.Meters)$p.value, 
-                           NA)
-  ) %>%
-  arrange(shapiro_pvalue)
-
-print(shapiro_pvalues)
+```{}
 ```
 
 ```{r}
@@ -138,7 +125,7 @@ ggplot(dfResm, aes(x=Var1, y=Var2, fill=value))+
 ```
 
 ```{r}
-# 11. Precedir dendograma a partir de la matriz de Tukey
+# 11. Precedir dendograma a partir de la matriz de Tukey. Cortamos en 0.25 y aparecen 3 clusters
 sqm.dist<- as.dist(1-abs(resm))
 str(sqm.dist)
 
@@ -161,6 +148,14 @@ text(1:length(labels(sqm.dend)),
 ```
 
 ```{r}
+df_clusters <- data.frame(Neighbourhood = names(clusters), neighb_id = as.numeric(clusters))
+str(df_clusters)
+
+df_madrid_cluster <- df_madrid |> inner_join(df_clusters[,c('Neighbourhood', 'neighb_id')], by='Neighbourhood')
+str(df_madrid_cluster)
+```
+
+```{r}
 # 12. Crear grupo test y grupo train
 set.seed(12345)
 idx<-sample(1:nrow(df_madrid),nrow(df_madrid)*0.7)
@@ -171,12 +166,11 @@ head(df_madrid.test)
 ```
 
 ```{r}
-#13. Predecir Sqm en función del resto de variables
+#13. Predecir Sqm en función del resto de variables. Hacemos la matriz de correlacion quitando los barrios y los pies cuadrados. 
 
 library(GGally)
 ggpairs(df_madrid[, -c(1, 7)], 
-       # lower = list(continuous = wrap("density", alpha = 0.8,size=0.2,color='blue'))
-       lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
+      lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
        )
 ```
 
