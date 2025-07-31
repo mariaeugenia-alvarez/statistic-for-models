@@ -76,6 +76,7 @@ hist(x = df_madrid$Square.Meters, breaks = 20, ylim = c(0, 60), main = 'Histogra
 
 ```{r}
 # 7.NA <20 Square meters (45 apartamentos por debajo de 20m2 son en total 5427)
+# según vemos en el histograma, hay muy pocos apartamentos mayores de 200 m2 que añaden más ruido que valor, así que los eliminamos junto a los de menos de 20m2 quedando un total de 4864
 df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20 | Square.Meters > 200, NA, Square.Meters))
 ```
 
@@ -91,7 +92,7 @@ str(df_madrid)
 ```
 
 ```{r}
-# 9. El p-valor del test shapiro (2.2e-16) es muy bajo, podemos descartar la hipotesis nula, es decir los datos NO siguen una distribución normal
+# 9. El p-valor del test shapiro (1.4e-08) es muy bajo, podemos descartar la hipotesis nula, es decir los datos NO siguen una distribución normal
 shapiro.test(df_madrid$Square.Meters)
 
 #Usamos el test kruskal. La hipotesis nula es que las medias fueran iguales en todos los barrios. El p-valor 0.01 nos indica que existen diferencias significativas y que no podemos asegurar que todos los barrios tienen los mismos metros cuadrados de media. 
@@ -148,41 +149,80 @@ str(df_clusters)
 
 df_madrid_cluster <- df_madrid |> inner_join(df_clusters[,c('Neighbourhood', 'neighb_id')], by='Neighbourhood')
 str(df_madrid_cluster)
+
+```
+
+```{r}
+#Hacemos la matriz de correlacion quitando los barrios y los pies cuadrados. 
+library(GGally)
+ggpairs(df_madrid_cluster[, -c(1, 7)], 
+      lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
+       )
+# Según esta matriz las variables como Latitude, Longitude y Review.Scores.Rat tienen una correlación muy baja con Square.Meters por lo que no las incluimos en el modelo. Extra-people y guests también las descartamos por ser también menores de 0.5
 ```
 
 ```{r}
 # 12. Crear grupo test y grupo train
 set.seed(12345)
 idx<-sample(1:nrow(df_madrid_cluster),nrow(df_madrid_cluster)*0.7)
-df_madrid.train<-df_madrid_cluster[idx,]
-df_madrid.test <-df_madrid_cluster[-idx,]
-head(df_madrid.train)
-head(df_madrid.test)
-```
+df_madrid.train <- na.omit(df_madrid_cluster[idx,c("Square.Meters", "Accommodates", "Bathrooms", "Bedrooms", "Beds", "Price", "neighb_id")])
+df_madrid.test <- df_madrid_cluster[-idx, c("Square.Meters", "Accommodates", "Bathrooms", "Bedrooms", "Beds", "Price", "neighb_id")] %>% filter(!is.na(Square.Meters))
+str(df_madrid.train)
+str(df_madrid.test)
 
-```{r}
-#Hacemos la matriz de correlacion quitando los barrios y los pies cuadrados. 
-library(GGally)
-ggpairs(df_madrid[, -c(1, 7)], 
-      lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
-       )
-# Según esta matriz las variables como Latitude, Longitude y Review.Scores.Rat tienen una correlación muy baja con Square.Meters por lo que no las incluimos en el modelo.
 ```
 
 ```{r}
 #13. Predecir Sqm en función del resto de variables. 
-model_sqm<-lm(Square.Meters~Accommodates+Bathrooms+Bedrooms+Beds+Price+neighb_id,data=na.omit(df_madrid.train))
+model_sqm<-lm(Square.Meters~Accommodates+Bathrooms+Bedrooms+Beds+Price+neighb_id,data=df_madrid.train)
 summary(model_sqm)
 
-#vemos que de todas las variables, las que tienen un p-valor muy significativo son bathrooms y price y significativo aunque algo menos bedrooms. El barrio 3 tiene apartamentos 82m2 más grandes que el barrio 1
-#el modelo explica el 75% de la variabilidad (Rsquared=0.75) con un error de predicción de +-26.86m2
+#vemos que de todas las variables, las que tienen un p-valor muy significativo son bedrooms, accommodates y los barrios 2 y 3
+#bedrooms y accommodates estan muy relacionadas por lo que nos quedamos con la primera 
+#el modelo explica el 70% de la variabilidad (Rsquared=0.7) con un error de predicción de +-15.73m2
 
 df_madrid.train$sqm_est<-predict(model_sqm,df_madrid.train)
-
 ggplot(df_madrid.train, aes(x=Square.Meters, y=Square.Meters-sqm_est))+geom_point()
-
-paste("RMSE:", sqrt(mean((df_madrid.train$Square.Meters-df_madrid.train$sqm_est)^2)))
 caret::postResample(pred=df_madrid.train$sqm_est, obs= df_madrid.train$Square.Meters)
+
+#vemos que siguen una distribución normal
+hist(df_madrid.train$Square.Meters-df_madrid.train$sqm_est,20)
+qqnorm(df_madrid.train$Square.Meters-df_madrid.train$sqm_est)
+qqline(df_madrid.train$Square.Meters-df_madrid.train$sqm_est, col = 'orange', lwd =2)
+```
+
+```{r}
+#14. Evaluar la calidad del modelo 
+#nos da un valor de R2 menor que con training y además el RMSE es mayor, lo que puede indicar overfitting. Vamos a probar con un modelo más simple según los p-valores de arriba.
+
+df_madrid.test$sqm_est<-predict(model_sqm,df_madrid.test)
+plot(df_madrid.test$Square.Meters,(df_madrid.test$Square.Meters-df_madrid.test$sqm_est))
+
+caret::postResample(pred=df_madrid.test$sqm_est, obs= df_madrid.test$Square.Meters)
+
+hist(df_madrid.test$Square.Meters-df_madrid.test$sqm_est,20)
+qqnorm(df_madrid.test$Square.Meters-df_madrid.test$sqm_est)
+qqline(df_madrid.test$Square.Meters-df_madrid.test$sqm_est, col = 'orange', lwd =2)
+
+```
+
+```{r}
+#nuevo modelo: 
+model_sqm2<-lm(Square.Meters~Bedrooms+neighb_id,data=df_madrid.train)
+summary(model_sqm2)
+
+#nos da un valor de R2 menor que con training y además el RMSE es mayor, lo que puede indicar overfitting. Vamos a probar con un modelo más simple según los p-valores de arriba.
+df_madrid.test$sqm_est<-predict(model_sqm2,df_madrid.test)
+plot(df_madrid.test$Square.Meters,(df_madrid.test$Square.Meters-df_madrid.test$sqm_est))
+caret::postResample(pred=df_madrid.test$sqm_est, obs= df_madrid.test$Square.Meters)
+
+```
+
+```{r}
+# Si tuvieramos un anuncio de un apartamento para 6 personas (Accommodates), con 1 baño, con un precio de 80€/noche y 3 habitaciones en el barrio de Sol, con 3 camas y un review de 80. ¿Cuantos metros cuadrados tendría? Si tu modelo necesita algúna variable adicional puedes inventartela dentro del rango de valores del dataset. ¿Como varía sus metros cuadrados con cada habitación adicional?
+
+
+
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
