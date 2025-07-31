@@ -76,11 +76,11 @@ hist(x = df_madrid$Square.Meters, breaks = 20, ylim = c(0, 60), main = 'Histogra
 
 ```{r}
 # 7.NA <20 Square meters (45 apartamentos por debajo de 20m2 son en total 5427)
-df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20, NA, Square.Meters))
+df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20 | Square.Meters > 200, NA, Square.Meters))
 ```
 
 ```{r}
-# 8.Eliminar todos los barrios con todas las rooms con NA Square meters (4901 apartamentos)
+# 8.Eliminar todos los barrios con todas las rooms con NA Square meters (4864 apartamentos)
 df_sq_Neigh <- df_madrid |> group_by(Neighbourhood) |> summarise(num=n(), sq_NA = sum(is.na(Square.Meters)))
 df_sq_Neigh <- df_sq_Neigh[df_sq_Neigh$num != df_sq_Neigh$sq_NA,]
 
@@ -99,7 +99,7 @@ kruskal.test(Square.Meters ~ Neighbourhood , data=df_madrid)
   
 ```
 
-```{}
+```         
 ```
 
 ```{r}
@@ -136,19 +136,14 @@ sqm.dend <- as.dendrogram(sqm.tree)
 library(dendextend)
 
 clusters <- cutree(sqm.dend, h=0.25)
-plot(color_branches(sqm.dend, h=0.25),main = "Dendrograma de Barrios por Metros Cuadrados", leaflab = "none")
+plot(color_branches(sqm.dend, h=0.25),main = "Dendrograma de Barrios por Metros Cuadrados", leaflab = "perpendicular")
 
-text(1:length(labels(sqm.dend)), 
-     par("usr")[3] - 0.02, 
-     labels = labels(sqm.dend), 
-     srt = 90, 
-     adj = c(1, 0.5), 
-     xpd = TRUE, 
-     cex = 1.2)
+
 ```
 
 ```{r}
-df_clusters <- data.frame(Neighbourhood = names(clusters), neighb_id = as.numeric(clusters))
+# Hacemos del vector de cluster un dataframe con los ids como factor, e incluimos la columna neighb_id al df_madrid
+df_clusters <- data.frame(Neighbourhood = names(clusters), neighb_id = as.factor(clusters))
 str(df_clusters)
 
 df_madrid_cluster <- df_madrid |> inner_join(df_clusters[,c('Neighbourhood', 'neighb_id')], by='Neighbourhood')
@@ -158,20 +153,36 @@ str(df_madrid_cluster)
 ```{r}
 # 12. Crear grupo test y grupo train
 set.seed(12345)
-idx<-sample(1:nrow(df_madrid),nrow(df_madrid)*0.7)
-df_madrid.train<-df_madrid[idx,]
-df_madrid.test <-df_madrid[-idx,]
+idx<-sample(1:nrow(df_madrid_cluster),nrow(df_madrid_cluster)*0.7)
+df_madrid.train<-df_madrid_cluster[idx,]
+df_madrid.test <-df_madrid_cluster[-idx,]
 head(df_madrid.train)
 head(df_madrid.test)
 ```
 
 ```{r}
-#13. Predecir Sqm en función del resto de variables. Hacemos la matriz de correlacion quitando los barrios y los pies cuadrados. 
-
+#Hacemos la matriz de correlacion quitando los barrios y los pies cuadrados. 
 library(GGally)
 ggpairs(df_madrid[, -c(1, 7)], 
       lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
        )
+# Según esta matriz las variables como Latitude, Longitude y Review.Scores.Rat tienen una correlación muy baja con Square.Meters por lo que no las incluimos en el modelo.
+```
+
+```{r}
+#13. Predecir Sqm en función del resto de variables. 
+model_sqm<-lm(Square.Meters~Accommodates+Bathrooms+Bedrooms+Beds+Price+neighb_id,data=na.omit(df_madrid.train))
+summary(model_sqm)
+
+#vemos que de todas las variables, las que tienen un p-valor muy significativo son bathrooms y price y significativo aunque algo menos bedrooms. El barrio 3 tiene apartamentos 82m2 más grandes que el barrio 1
+#el modelo explica el 75% de la variabilidad (Rsquared=0.75) con un error de predicción de +-26.86m2
+
+df_madrid.train$sqm_est<-predict(model_sqm,df_madrid.train)
+
+ggplot(df_madrid.train, aes(x=Square.Meters, y=Square.Meters-sqm_est))+geom_point()
+
+paste("RMSE:", sqrt(mean((df_madrid.train$Square.Meters-df_madrid.train$sqm_est)^2)))
+caret::postResample(pred=df_madrid.train$sqm_est, obs= df_madrid.train$Square.Meters)
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
