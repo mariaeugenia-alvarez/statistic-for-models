@@ -100,9 +100,6 @@ kruskal.test(Square.Meters ~ Neighbourhood , data=df_madrid)
   
 ```
 
-```         
-```
-
 ```{r}
 # 10. Matriz de similaridad de Tukey. p-valor bajo, los barrios no se parecen. p-valor alto, los barrios se parecen
 tky<-TukeyHSD(aov( Square.Meters ~ Neighbourhood, data=df_madrid))
@@ -193,7 +190,7 @@ qqline(df_madrid.train$Square.Meters-df_madrid.train$sqm_est, col = 'orange', lw
 
 ```{r}
 #14. Evaluar la calidad del modelo 
-#nos da un valor de R2 menor que con training y además el RMSE es mayor, lo que puede indicar overfitting. Vamos a probar con un modelo más simple según los p-valores de arriba.
+#nos da un valor de R2 para el testing de 0.64 y además el RMSE es mayor que en training (20.25m2) lo que puede indicar overfitting. 
 
 df_madrid.test$sqm_est<-predict(model_sqm,df_madrid.test)
 plot(df_madrid.test$Square.Meters,(df_madrid.test$Square.Meters-df_madrid.test$sqm_est))
@@ -207,11 +204,11 @@ qqline(df_madrid.test$Square.Meters-df_madrid.test$sqm_est, col = 'orange', lwd 
 ```
 
 ```{r}
-#nuevo modelo: 
+#Hacemos un nuevo modelo simplificando variables teniendo en cuenta la información estadistica del modelo inicial: 
 model_sqm2<-lm(Square.Meters~Bedrooms+neighb_id,data=df_madrid.train)
 summary(model_sqm2)
 
-#nos da un valor de R2 menor que con training y además el RMSE es mayor, lo que puede indicar overfitting. Vamos a probar con un modelo más simple según los p-valores de arriba.
+#nos da un valor de R2 para testing de 0.67, por lo que hemos mejorado y además el RMSE ha mejorado algo (19.3m2). El error estandar también ha bajado ligeramente
 df_madrid.test$sqm_est<-predict(model_sqm2,df_madrid.test)
 plot(df_madrid.test$Square.Meters,(df_madrid.test$Square.Meters-df_madrid.test$sqm_est))
 caret::postResample(pred=df_madrid.test$sqm_est, obs= df_madrid.test$Square.Meters)
@@ -219,10 +216,16 @@ caret::postResample(pred=df_madrid.test$sqm_est, obs= df_madrid.test$Square.Mete
 ```
 
 ```{r}
-# Si tuvieramos un anuncio de un apartamento para 6 personas (Accommodates), con 1 baño, con un precio de 80€/noche y 3 habitaciones en el barrio de Sol, con 3 camas y un review de 80. ¿Cuantos metros cuadrados tendría? Si tu modelo necesita algúna variable adicional puedes inventartela dentro del rango de valores del dataset. ¿Como varía sus metros cuadrados con cada habitación adicional?
+# 15. Si tuvieramos un anuncio de un apartamento para 6 personas (Accommodates), con 1 baño, con un precio de 80€/noche y 3 habitaciones en el barrio de Sol, con 3 camas y un review de 80. ¿Cuantos metros cuadrados tendría? Si tu modelo necesita algúna variable adicional puedes inventartela dentro del rango de valores del dataset. ¿Como varía sus metros cuadrados con cada habitación adicional?
 
+sqm_predict <- predict(model_sqm2, newdata = data.frame(Bedrooms = 3, neighb_id = df_clusters[df_clusters$Neighbourhood == "Sol", "neighb_id"]))
+cat("Los metros cuadrados del apartamento en Sol de 3 camas es de: ", sqm_predict)
+cat("Con cada habitación adicional aumenta los m2 en: ", coef(model_sqm2)["Bedrooms"])
 
+```
 
+```{r}
+#16. Rellenar los Square.Meters con valor NA con el estimado 
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
