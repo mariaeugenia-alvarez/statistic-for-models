@@ -75,13 +75,13 @@ hist(x = df_madrid$Square.Meters, breaks = 20, ylim = c(0, 60), main = 'Histogra
 ```
 
 ```{r}
-# 7.NA <20 Square meters (45 apartamentos por debajo de 20m2 son en total 5427)
-# según vemos en el histograma, hay muy pocos apartamentos mayores de 200 m2 que añaden más ruido que valor, así que los eliminamos junto a los de menos de 20m2 quedando un total de 4864
-df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20 | Square.Meters > 200, NA, Square.Meters))
+# 7.NA <20 Square meters 
+# según vemos en el histograma, hay outliers de pisos en torno a 500 m2 que añaden más ruido que valor, un buen punto de corte será 250-300 así que los filtramos junto a los de menos de 20m2
+df_madrid <- df_madrid %>% mutate(Square.Meters = ifelse(Square.Meters < 20 | Square.Meters > 250, NA, Square.Meters))
 ```
 
 ```{r}
-# 8.Eliminar todos los barrios con todas las rooms con NA Square meters (4864 apartamentos)
+# 8.Eliminar todos los barrios con todas las rooms con NA Square meters 
 df_sq_Neigh <- df_madrid |> group_by(Neighbourhood) |> summarise(num=n(), sq_NA = sum(is.na(Square.Meters)))
 df_sq_Neigh <- df_sq_Neigh[df_sq_Neigh$num != df_sq_Neigh$sq_NA,]
 
@@ -92,7 +92,7 @@ str(df_madrid)
 ```
 
 ```{r}
-# 9. El p-valor del test shapiro (1.4e-08) es muy bajo, podemos descartar la hipotesis nula, es decir los datos NO siguen una distribución normal
+# 9. El p-valor del test shapiro (4.18e-11) es muy bajo, podemos descartar la hipotesis nula, es decir los datos NO siguen una distribución normal
 shapiro.test(df_madrid$Square.Meters)
 
 #Usamos el test kruskal. La hipotesis nula es que las medias fueran iguales en todos los barrios. El p-valor 0.01 nos indica que existen diferencias significativas y que no podemos asegurar que todos los barrios tienen los mismos metros cuadrados de media. 
@@ -123,7 +123,7 @@ ggplot(dfResm, aes(x=Var1, y=Var2, fill=value))+
 ```
 
 ```{r}
-# 11. Precedir dendograma a partir de la matriz de Tukey. Cortamos en 0.25 y aparecen 3 clusters
+# 11. Precedir dendograma a partir de la matriz de Tukey. Cortamos en 0.25 y aparecen 3 clusters (si cortamos tal que salgan 4 clusters, no habria gran diferencia entre la subdivisión del grupo rojo)
 sqm.dist<- as.dist(1-abs(resm))
 str(sqm.dist)
 
@@ -155,14 +155,18 @@ library(GGally)
 ggpairs(df_madrid_cluster[, -c(1, 7)], 
       lower = list(continuous = wrap("points", alpha = 0.3,size=0.1,color='blue'))
        )
-# Según esta matriz las variables como Latitude, Longitude y Review.Scores.Rat tienen una correlación muy baja con Square.Meters por lo que no las incluimos en el modelo. Extra-people y guests también las descartamos por ser también menores de 0.5
+# Elegimos las variables con correlación >0.5. Según esta matriz las variables como Latitude, Longitude y Review.Scores.Rat tienen una correlación muy baja con Square.Meters por lo que no las incluimos en el modelo. Extra-people y guests también las descartamos por ser menores de 0.5. 
 ```
 
 ```{r}
-# 12. Crear grupo test y grupo train
+# 12. Crear grupo test y grupo train. 
 set.seed(12345)
 idx<-sample(1:nrow(df_madrid_cluster),nrow(df_madrid_cluster)*0.7)
+
+#Eliminamos las filas que tengan NA en alguna columna
 df_madrid.train <- na.omit(df_madrid_cluster[idx,c("Square.Meters", "Accommodates", "Bathrooms", "Bedrooms", "Beds", "Price", "neighb_id")])
+
+#Eliminamos las filas que tengan NA en Square.Metes
 df_madrid.test <- df_madrid_cluster[-idx, c("Square.Meters", "Accommodates", "Bathrooms", "Bedrooms", "Beds", "Price", "neighb_id")] %>% filter(!is.na(Square.Meters))
 str(df_madrid.train)
 str(df_madrid.test)
@@ -174,15 +178,15 @@ str(df_madrid.test)
 model_sqm<-lm(Square.Meters~Accommodates+Bathrooms+Bedrooms+Beds+Price+neighb_id,data=df_madrid.train)
 summary(model_sqm)
 
-#vemos que de todas las variables, las que tienen un p-valor muy significativo son bedrooms, accommodates y los barrios 2 y 3
-#bedrooms y accommodates estan muy relacionadas por lo que nos quedamos con la primera 
-#el modelo explica el 70% de la variabilidad (Rsquared=0.7) con un error de predicción de +-15.73m2
+#vemos que de todas las variables, las que tienen un p-valor muy significativo es bedrooms, el barrio 2 y el precio. Bathrooms también puede ser interesante estudiarla. 
+ 
+#el modelo con los datos de training explica el 70% de la variabilidad (Rsquared=0.7) con un error de predicción promedio de +-19.1m2
 
 df_madrid.train$sqm_est<-predict(model_sqm,df_madrid.train)
 ggplot(df_madrid.train, aes(x=Square.Meters, y=Square.Meters-sqm_est))+geom_point()
 caret::postResample(pred=df_madrid.train$sqm_est, obs= df_madrid.train$Square.Meters)
 
-#vemos que siguen una distribución normal
+#histograma sin sesgo y con errores practicamente distribuidos de forma normal y algunos outliers todavia presentes, que también aparecen en las colas del Q-Q Plot
 hist(df_madrid.train$Square.Meters-df_madrid.train$sqm_est,20)
 qqnorm(df_madrid.train$Square.Meters-df_madrid.train$sqm_est)
 qqline(df_madrid.train$Square.Meters-df_madrid.train$sqm_est, col = 'orange', lwd =2)
@@ -190,7 +194,7 @@ qqline(df_madrid.train$Square.Meters-df_madrid.train$sqm_est, col = 'orange', lw
 
 ```{r}
 #14. Evaluar la calidad del modelo 
-#nos da un valor de R2 para el testing de 0.64 y además el RMSE es mayor que en training (20.25m2) lo que puede indicar overfitting. 
+#nos da un valor de R2 para el testing de 0.68 y además el RMSE mejorado (17.2)
 
 df_madrid.test$sqm_est<-predict(model_sqm,df_madrid.test)
 plot(df_madrid.test$Square.Meters,(df_madrid.test$Square.Meters-df_madrid.test$sqm_est))
@@ -204,21 +208,23 @@ qqline(df_madrid.test$Square.Meters-df_madrid.test$sqm_est, col = 'orange', lwd 
 ```
 
 ```{r}
-#Hacemos un nuevo modelo simplificando variables teniendo en cuenta la información estadistica del modelo inicial: 
-model_sqm2<-lm(Square.Meters~Bedrooms+neighb_id,data=df_madrid.train)
+#Hacemos un nuevo modelo simplificando variables teniendo en cuenta la información estadistica del modelo inicial 
+model_sqm2<-lm(Square.Meters~Bathrooms+Bedrooms+Price+neighb_id,data=df_madrid.train)
 summary(model_sqm2)
 
-#nos da un valor de R2 para testing de 0.67, por lo que hemos mejorado y además el RMSE ha mejorado algo (19.3m2). El error estandar también ha bajado ligeramente
+#Este segundo modelo nos da un valor de R2 y error para testing muy parecido al anterior con la mejora de ser más simplificado, eliminando ruido y riesgo de overfitting
 df_madrid.test$sqm_est<-predict(model_sqm2,df_madrid.test)
 plot(df_madrid.test$Square.Meters,(df_madrid.test$Square.Meters-df_madrid.test$sqm_est))
 caret::postResample(pred=df_madrid.test$sqm_est, obs= df_madrid.test$Square.Meters)
+
+#Probe a eliminar bathrooms en un tercer modelo porque inicialmente no parecia estadisticamente muy significtiva, sin embargo el R2 empeora (0.65 vs 0.688) y también lo hacen los errores promedio y estandar, por lo que decido dejarla.
 
 ```
 
 ```{r}
 # 15. Si tuvieramos un anuncio de un apartamento para 6 personas (Accommodates), con 1 baño, con un precio de 80€/noche y 3 habitaciones en el barrio de Sol, con 3 camas y un review de 80. ¿Cuantos metros cuadrados tendría? Si tu modelo necesita algúna variable adicional puedes inventartela dentro del rango de valores del dataset. ¿Como varía sus metros cuadrados con cada habitación adicional?
 
-sqm_predict <- predict(model_sqm2, newdata = data.frame(Bedrooms = 3, neighb_id = df_clusters[df_clusters$Neighbourhood == "Sol", "neighb_id"]))
+sqm_predict <- predict(model_sqm2, newdata = data.frame(Bathrooms = 1, Bedrooms = 3, Price = 80, neighb_id = df_clusters[df_clusters$Neighbourhood == "Sol", "neighb_id"]))
 cat("Los metros cuadrados del apartamento en Sol de 3 camas es de: ", sqm_predict)
 cat("Con cada habitación adicional aumenta los m2 en: ", coef(model_sqm2)["Bedrooms"])
 
@@ -226,6 +232,20 @@ cat("Con cada habitación adicional aumenta los m2 en: ", coef(model_sqm2)["Bedr
 
 ```{r}
 #16. Rellenar los Square.Meters con valor NA con el estimado 
+
+df_madrid_fill_sqm <- df_madrid_cluster
+df_madrid_fill_sqm$Square.Meters[is.na(df_madrid_fill_sqm$Square.Meters)] <- predict(model_sqm2,df_madrid_fill_sqm[is.na(df_madrid_fill_sqm$Square.Meters), ])
+
+
+na_original <- sum(is.na(df_madrid_cluster$Square.Meters))
+na_fill_sqm <- sum(is.na(df_madrid_fill_sqm$Square.Meters))
+
+#comparamos y vemos que han quedado 10 filas de Square.Meters sin rellenar, probablemente porque alguna de las variables predictoras tuvieran NA
+
+cat("NAs antes:", na_original, "\n")
+cat("NAs después de usar el modelo para rellenar:", na_fill_sqm, "\n")
+cat("NAs rellenados:", na_original - na_fill_sqm, "\n")
+head(df_madrid_fill_sqm)
 ```
 
 1.  ![](images/paste-1.png)Vamos a quedarnos con las columnas de mayor interés: 'City','Room.Type','Neighbourhood','Accommodates','Bathrooms','Bedrooms','Beds','Price','Square.Feet','Guests.Included','Extra.People','Review.Scores.Rating','Latitude', 'Longitude' Nos quedarmos solo con las entradas de Madrid para Room.Type=="Entire home/apt" y cuyo barrio (Neighbourhood) no está vacio '' Podemos eliminar las siguientes columnas que ya no son necesarias: "Room.Type",'City' Llama a nuevo dataframe df_madrid.
